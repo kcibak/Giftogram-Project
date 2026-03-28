@@ -3,8 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "backend"
+  ],
   "scripts": {
     "dev": "vite",
+    "dev:frontend": "vite",
+    "dev:backend": "npm run dev -w backend",
     "build": "vite build",
     "preview": "vite preview"
   },
