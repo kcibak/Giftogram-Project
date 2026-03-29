@@ -1,0 +1,44 @@
+const { errorCatalog } = require("../utils/apiError");
+
+function createRequireAuth({ authenticateSession }) {
+  return async function requireAuth(req, res, next) {
+    try {
+      const token = extractBearerToken(req.headers.authorization);
+      const auth = await authenticateSession(token);
+      const userPublicId = auth?.user?.publicId || null;
+
+      req.auth = auth;
+      req.body = {
+        ...(req.body || {}),
+        authenticated_user_id: userPublicId,
+      };
+      req.query = {
+        ...(req.query || {}),
+        authenticated_user_id: userPublicId,
+      };
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+function extractBearerToken(authorizationHeader) {
+  if (typeof authorizationHeader !== "string" || !authorizationHeader.trim()) {
+    throw errorCatalog.authMissingToken();
+  }
+
+  const match = authorizationHeader.match(/^Bearer\s+(.+)$/i);
+
+  if (!match) {
+    throw errorCatalog.authMissingToken();
+  }
+
+  return match[1];
+}
+
+module.exports = {
+  createRequireAuth,
+  extractBearerToken,
+};
