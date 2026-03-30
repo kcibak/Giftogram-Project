@@ -233,11 +233,12 @@ Authorization: Bearer <session_token>
 
 ## Development Process
 
-1. **Docker Orchestration** — Set up multi-stage Docker images and Docker Compose for the three services (MySQL, Express backend, React/Vite frontend) with health checks, enabling a reproducible environment from the start
-2. **Schema Design** — Designed a minimal relational schema covering `users`, `sessions`, `messages`, and `user_blocks` with composite indexes for query performance
-3. **Core API & Blocking** — Implemented all five required endpoints (`register`, `login`, `send_message`, `view_messages`, `list_all_users`) with input validation; 1:1 messaging with sender/receiver identified by public UUIDs, messages stored with Unix epoch timestamps and retrieved in chronological order; added bidirectional user blocking to prevent both sending and viewing messages in either direction; endpoints tested with Postman
-4. **Authentication** — Session-based stateful authentication where login produces 64-character hex session tokens (hashed with SHA256 server-side) that are required and validated via Bearer token middleware for accessing protected endpoints (messaging, user listing, blocking)
-5. **Frontend Tester** — Minimal React UI to simplify integration testing and demonstrate the API (login, register, user list, message send/view, block/unblock)
+1. **Frontend Template** — Initialized React project structure using `npm create vite@latest my-app -- --template react`
+2. **Docker Orchestration** — Set up multi-stage Docker images and Docker Compose for the three services (MySQL, Express backend, React/Vite frontend) with health checks, enabling a reproducible environment from the start
+3. **Schema Design** — Designed a minimal relational schema covering `users`, `sessions`, `messages`, and `user_blocks` with composite indexes for query performance
+4. **Core API & Blocking** — Implemented all five required endpoints (`register`, `login`, `send_message`, `view_messages`, `list_all_users`) with input validation; 1:1 messaging with sender/receiver identified by public UUIDs, messages stored with Unix epoch timestamps and retrieved in chronological order; added bidirectional user blocking to prevent both sending and viewing messages in either direction; endpoints tested with Postman
+5. **Authentication** — Session-based stateful authentication where login produces 64-character hex session tokens (hashed with SHA256 server-side) that are required and validated via Bearer token middleware for accessing protected endpoints (messaging, user listing, blocking)
+6. **Frontend Tester** — Minimal React UI to simplify integration testing and demonstrate the API (login, register, user list, message send/view, block/unblock)
 
 ---
 
