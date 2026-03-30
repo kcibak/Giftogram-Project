@@ -47,7 +47,6 @@ function createUnblockUser({
         throw error;
       }
 
-      console.error("unblockUser unexpected error", error);
       throw errorCatalog.unblockFailed();
     }
   };

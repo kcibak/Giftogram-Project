@@ -43,5 +43,4 @@ function extractBearerToken(authorizationHeader) {
 
 module.exports = {
   createRequireAuth,
-  extractBearerToken,
 };

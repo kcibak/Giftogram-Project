@@ -25,8 +25,6 @@ function errorHandler(err, req, res, next) {
     return;
   }
 
-  console.error("Unhandled API error:", err);
-
   const serverError = errorCatalog.internalServerError();
   res.status(serverError.statusCode).json(serverError.toResponse());
 }

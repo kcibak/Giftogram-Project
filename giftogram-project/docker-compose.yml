@@ -20,7 +20,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
       target: backend
     container_name: giftogram_api
     restart: always
@@ -47,7 +47,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
       target: frontend
     container_name: giftogram_frontend
     restart: always

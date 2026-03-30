@@ -52,7 +52,6 @@ function createSendMessage({
         throw error;
       }
 
-      console.error("sendMessage unexpected error", error);
       throw errorCatalog.messageSendFailed();
     }
   };

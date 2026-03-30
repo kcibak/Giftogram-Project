@@ -47,7 +47,6 @@ function createLoginUser({
       if (error instanceof ApiError) {
         throw error;
       }
-      console.error("loginUser unexpected error", error);
       throw errorCatalog.loginFailed();
     }
   };

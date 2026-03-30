@@ -152,6 +152,4 @@ function createUserRepository({ db = getDbPool() } = {}) {
 
 module.exports = {
   createUserRepository,
-  mapUserSummaryRow,
-  normalizePaginationValue,
 };

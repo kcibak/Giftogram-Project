@@ -47,7 +47,6 @@ function createBlockUser({
         throw errorCatalog.blockAlreadyExists();
       }
 
-      console.error("blockUser unexpected error", error);
       throw errorCatalog.blockFailed();
     }
   };

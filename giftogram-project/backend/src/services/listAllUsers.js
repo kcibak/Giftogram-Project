@@ -35,7 +35,6 @@ function createListAllUsers({ userRepository = createUserRepository() } = {}) {
         throw error;
       }
 
-      console.error("listAllUsers unexpected error", error);
       throw errorCatalog.listUsersFailed();
     }
   };
