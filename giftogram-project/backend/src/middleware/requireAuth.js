@@ -6,15 +6,18 @@ function createRequireAuth({ authenticateSession }) {
       const token = extractBearerToken(req.headers.authorization);
       const auth = await authenticateSession(token);
       const userPublicId = auth?.user?.publicId || null;
+      const userInternalId = Number.isInteger(auth?.userId) ? auth.userId : null;
 
       req.auth = auth;
       req.body = {
         ...(req.body || {}),
         authenticated_user_id: userPublicId,
+        authenticated_user_internal_id: userInternalId,
       };
       req.query = {
         ...(req.query || {}),
         authenticated_user_id: userPublicId,
+        authenticated_user_internal_id: userInternalId,
       };
 
       next();

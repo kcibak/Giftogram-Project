@@ -58,7 +58,28 @@ const errorCatalog = {
     return new ApiError(500, 1302, "Message Send Failed", "Unable to send the message at this time.");
   },
   messageBlocked() {
-    return new ApiError(403, 1303, "Message Blocked", "A block exists between these users, so the message cannot be sent.");
+    return new ApiError(403, 403, "Messaging Blocked", "You cannot send messages to this user.");
+  },
+  conversationBlocked() {
+    return new ApiError(403, 403, "Conversation Blocked", "You cannot view messages with this user.");
+  },
+  blockSelf() {
+    return new ApiError(400, 1701, "Invalid Block Request", "You cannot block yourself.");
+  },
+  blockUserNotFound() {
+    return new ApiError(404, 1702, "User Not Found", "One or more users could not be found.");
+  },
+  blockAlreadyExists() {
+    return new ApiError(409, 1703, "Block Already Exists", "This user is already blocked.");
+  },
+  blockFailed() {
+    return new ApiError(500, 1704, "Block Failed", "Unable to block the user at this time.");
+  },
+  unblockRelationshipNotFound() {
+    return new ApiError(404, 1705, "Block Not Found", "No block relationship exists between these users.");
+  },
+  unblockFailed() {
+    return new ApiError(500, 1706, "Unblock Failed", "Unable to unblock the user at this time.");
   },
   listUsersUserNotFound() {
     return new ApiError(404, 1501, "User Not Found", "The requester could not be found.");

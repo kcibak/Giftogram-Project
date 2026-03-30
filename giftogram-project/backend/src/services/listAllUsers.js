@@ -17,10 +17,15 @@ function createListAllUsers({ userRepository = createUserRepository() } = {}) {
         throw errorCatalog.listUsersUserNotFound();
       }
 
-      const users = await userRepository.listUsersExcludingPublicId(normalizedInput.requesterUserId, {
-        limit: normalizedInput.limit,
-        offset: normalizedInput.offset,
-      });
+      const users = normalizedInput.excludeBlocked
+        ? await userRepository.listUsersExcludingPublicIdBlockedByUser(normalizedInput.requesterUserId, requester.id, {
+            limit: normalizedInput.limit,
+            offset: normalizedInput.offset,
+          })
+        : await userRepository.listUsersExcludingPublicId(normalizedInput.requesterUserId, {
+            limit: normalizedInput.limit,
+            offset: normalizedInput.offset,
+          });
 
       return {
         users: users.map(toUserResponse),
@@ -49,9 +54,22 @@ function normalizeListAllUsersInput(query) {
   return {
     requesterUserId: requesterUserId || authenticatedUserId,
     authenticatedUserId,
+    excludeBlocked: normalizeBoolean(query.exclude_blocked),
     limit: Number.isInteger(Number(query.limit)) ? Number(query.limit) : 50,
     offset: Number.isInteger(Number(query.offset)) ? Number(query.offset) : 0,
   };
+}
+
+function normalizeBoolean(value) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  return ["1", "true", "yes"].includes(value.trim().toLowerCase());
 }
 
 function validateListAllUsersInput({ requesterUserId }) {

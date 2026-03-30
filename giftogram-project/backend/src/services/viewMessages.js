@@ -1,4 +1,5 @@
 const { createMessageRepository } = require("../repositories/messageRepository");
+const { createUserBlockRepository } = require("../repositories/userBlockRepository");
 const { createUserRepository } = require("../repositories/userRepository");
 const { ApiError, errorCatalog } = require("../utils/apiError");
 const { toMessageResponse } = require("../utils/mappers");
@@ -7,6 +8,7 @@ const { isValidPublicId } = require("../utils/validators");
 function createViewMessages({
   userRepository = createUserRepository(),
   messageRepository = createMessageRepository(),
+  userBlockRepository = createUserBlockRepository(),
 } = {}) {
   return async function viewMessages(query = {}) {
     const normalizedInput = normalizeViewMessagesInput(query);
@@ -23,9 +25,17 @@ function createViewMessages({
         throw errorCatalog.viewMessagesUserNotFound();
       }
 
+      const userA = userMap.get(normalizedInput.userIdA);
+      const userB = userMap.get(normalizedInput.userIdB);
+      const blockExists = await userBlockRepository.blockExistsBetweenUsers(userA.id, userB.id);
+
+      if (blockExists) {
+        throw errorCatalog.conversationBlocked();
+      }
+
       const messages = await messageRepository.findConversationByUserIds(
-        userMap.get(normalizedInput.userIdA).id,
-        userMap.get(normalizedInput.userIdB).id
+        userA.id,
+        userB.id
       );
 
       return {

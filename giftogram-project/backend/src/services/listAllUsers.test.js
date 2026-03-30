@@ -82,6 +82,54 @@ test("listAllUsers falls back to the authenticated user id when requester_user_i
   });
 });
 
+test("listAllUsers can exclude users blocked by requester", async () => {
+  const listAllUsers = createListAllUsers({
+    userRepository: {
+      async findUserByPublicId() {
+        return {
+          id: 7,
+          publicId: "4cae9f07-6a7a-4ce3-8529-b19812b71234",
+        };
+      },
+      async listUsersExcludingPublicId() {
+        throw new Error("listUsersExcludingPublicId should not be called");
+      },
+      async listUsersExcludingPublicIdBlockedByUser(requesterPublicId, blockerId, { limit, offset }) {
+        assert.equal(requesterPublicId, "4cae9f07-6a7a-4ce3-8529-b19812b71234");
+        assert.equal(blockerId, 7);
+        assert.equal(limit, 50);
+        assert.equal(offset, 0);
+        return [
+          {
+            id: 3,
+            publicId: "59cbfd78-54d2-44b4-ae6d-6a1d995e77eb",
+            email: "jake@giftogram.com",
+            firstName: "Jake",
+            lastName: "Green",
+          },
+        ];
+      },
+    },
+  });
+
+  const result = await listAllUsers({
+    requester_user_id: "4cae9f07-6a7a-4ce3-8529-b19812b71234",
+    authenticated_user_id: "4cae9f07-6a7a-4ce3-8529-b19812b71234",
+    exclude_blocked: "true",
+  });
+
+  assert.deepEqual(result, {
+    users: [
+      {
+        user_id: "59cbfd78-54d2-44b4-ae6d-6a1d995e77eb",
+        email: "jake@giftogram.com",
+        first_name: "Jake",
+        last_name: "Green",
+      },
+    ],
+  });
+});
+
 test("listAllUsers returns user not found when requester does not exist", async () => {
   const listAllUsers = createListAllUsers({
     userRepository: {

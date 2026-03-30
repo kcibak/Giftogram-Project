@@ -34,6 +34,11 @@ test("viewMessages returns the conversation in chronological order with public i
         ];
       },
     },
+    userBlockRepository: {
+      async blockExistsBetweenUsers() {
+        return false;
+      },
+    },
   });
 
   const result = await viewMessages({
@@ -72,6 +77,11 @@ test("viewMessages returns user not found when either user does not exist", asyn
         throw new Error("findConversationByUserIds should not be called");
       },
     },
+    userBlockRepository: {
+      async blockExistsBetweenUsers() {
+        return false;
+      },
+    },
   });
 
   await assert.rejects(
@@ -102,6 +112,11 @@ test("viewMessages validates required query params", async () => {
         throw new Error("findConversationByUserIds should not be called");
       },
     },
+    userBlockRepository: {
+      async blockExistsBetweenUsers() {
+        throw new Error("blockExistsBetweenUsers should not be called");
+      },
+    },
   });
 
   await assert.rejects(
@@ -128,6 +143,11 @@ test("viewMessages rejects when the authenticated user is not part of the conver
         throw new Error("findConversationByUserIds should not be called");
       },
     },
+    userBlockRepository: {
+      async blockExistsBetweenUsers() {
+        throw new Error("blockExistsBetweenUsers should not be called");
+      },
+    },
   });
 
   await assert.rejects(
@@ -141,6 +161,46 @@ test("viewMessages rejects when the authenticated user is not part of the conver
       assert.ok(error instanceof ApiError);
       assert.equal(error.statusCode, 403);
       assert.equal(error.errorCode, 1604);
+      return true;
+    }
+  );
+});
+
+test("viewMessages rejects when a block exists between users", async () => {
+  const viewMessages = createViewMessages({
+    userRepository: {
+      async findUsersByPublicIds() {
+        return [
+          { id: 1, publicId: "4cae9f07-6a7a-4ce3-8529-b19812b71234" },
+          { id: 2, publicId: "3fd2d899-0b62-4ecb-b92f-8f9ef0424dd7" },
+        ];
+      },
+    },
+    messageRepository: {
+      async findConversationByUserIds() {
+        throw new Error("findConversationByUserIds should not be called");
+      },
+    },
+    userBlockRepository: {
+      async blockExistsBetweenUsers() {
+        return true;
+      },
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      viewMessages({
+        user_id_a: "4cae9f07-6a7a-4ce3-8529-b19812b71234",
+        user_id_b: "3fd2d899-0b62-4ecb-b92f-8f9ef0424dd7",
+        authenticated_user_id: "4cae9f07-6a7a-4ce3-8529-b19812b71234",
+      }),
+    (error) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.statusCode, 403);
+      assert.equal(error.errorCode, 403);
+      assert.equal(error.errorTitle, "Conversation Blocked");
+      assert.equal(error.errorMessage, "You cannot view messages with this user.");
       return true;
     }
   );

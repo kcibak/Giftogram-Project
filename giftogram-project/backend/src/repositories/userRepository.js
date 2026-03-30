@@ -96,6 +96,22 @@ function createUserRepository({ db = getDbPool() } = {}) {
       return rows.map(mapUserRow);
     },
 
+    async findUsersByIds(userIds) {
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        return [];
+      }
+
+      const placeholders = userIds.map(() => "?").join(", ");
+      const [rows] = await db.execute(
+        `SELECT id, public_id, email, password_hash, first_name, last_name
+         FROM users
+         WHERE id IN (${placeholders})`,
+        userIds
+      );
+
+      return rows.map(mapUserRow);
+    },
+
     async listUsersExcludingPublicId(requesterPublicId, { limit = 50, offset = 0 } = {}) {
       const normalizedLimit = normalizePaginationValue(limit, 50);
       const normalizedOffset = normalizePaginationValue(offset, 0);
@@ -106,6 +122,27 @@ function createUserRepository({ db = getDbPool() } = {}) {
          ORDER BY first_name ASC, last_name ASC, email ASC
          LIMIT ${normalizedLimit} OFFSET ${normalizedOffset}`,
         [requesterPublicId]
+      );
+
+      return rows.map(mapUserSummaryRow);
+    },
+
+    async listUsersExcludingPublicIdBlockedByUser(requesterPublicId, blockerId, { limit = 50, offset = 0 } = {}) {
+      const normalizedLimit = normalizePaginationValue(limit, 50);
+      const normalizedOffset = normalizePaginationValue(offset, 0);
+      const [rows] = await db.query(
+        `SELECT u.id, u.public_id, u.email, u.first_name, u.last_name
+         FROM users u
+         WHERE u.public_id <> ?
+           AND NOT EXISTS (
+             SELECT 1
+             FROM user_blocks ub
+             WHERE ub.blocker_id = ?
+               AND ub.blocked_id = u.id
+           )
+         ORDER BY u.first_name ASC, u.last_name ASC, u.email ASC
+         LIMIT ${normalizedLimit} OFFSET ${normalizedOffset}`,
+        [requesterPublicId, blockerId]
       );
 
       return rows.map(mapUserSummaryRow);

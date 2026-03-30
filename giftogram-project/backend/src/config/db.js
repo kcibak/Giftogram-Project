@@ -30,6 +30,17 @@ function getDbPool() {
   return pool;
 }
 
+async function checkDatabaseHealth() {
+  const db = getDbPool();
+  await db.query("SELECT 1 AS ok");
+
+  return {
+    status: "ok",
+    database: "up",
+  };
+}
+
 module.exports = {
+  checkDatabaseHealth,
   getDbPool,
 };

@@ -1,10 +1,13 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createApp } = require("./app");
+const { createBlockUserController } = require("./controllers/blockUserController");
+const { createHealthController } = require("./controllers/healthController");
 const { createListAllUsersController } = require("./controllers/listAllUsersController");
 const { createLoginController } = require("./controllers/loginController");
 const { createRegisterController } = require("./controllers/registerController");
 const { createSendMessageController } = require("./controllers/sendMessageController");
+const { createUnblockUserController } = require("./controllers/unblockUserController");
 const { createViewMessagesController } = require("./controllers/viewMessagesController");
 const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
 const { createRequireAuth, extractBearerToken } = require("./middleware/requireAuth");
@@ -93,6 +96,24 @@ test("loginController returns the authenticated user payload", async () => {
   });
 });
 
+test("healthController returns the health payload", async () => {
+  const controller = createHealthController({
+    checkHealth: async () => ({
+      status: "ok",
+      database: "up",
+    }),
+  });
+  const res = createMockResponse();
+
+  await controller({}, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, {
+    status: "ok",
+    database: "up",
+  });
+});
+
 test("viewMessagesController returns the message list payload", async () => {
   const controller = createViewMessagesController({
     viewMessages: async () => ({
@@ -139,6 +160,58 @@ test("sendMessageController returns the success payload", async () => {
     success_code: 200,
     success_title: "Message Sent",
     success_message: "Message was sent successfully",
+  });
+});
+
+test("blockUserController returns the success payload", async () => {
+  const controller = createBlockUserController({
+    blockUser: async () => ({
+      success_code: 200,
+      success_title: "User Blocked",
+      success_message: "User was blocked successfully.",
+    }),
+  });
+  const req = {
+    body: {
+      blocker_id: 1,
+      blocked_id: 2,
+    },
+  };
+  const res = createMockResponse();
+
+  await controller(req, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, {
+    success_code: 200,
+    success_title: "User Blocked",
+    success_message: "User was blocked successfully.",
+  });
+});
+
+test("unblockUserController returns the success payload", async () => {
+  const controller = createUnblockUserController({
+    unblockUser: async () => ({
+      success_code: 200,
+      success_title: "User Unblocked",
+      success_message: "User was unblocked successfully.",
+    }),
+  });
+  const req = {
+    body: {
+      blocker_id: 1,
+      blocked_id: 2,
+    },
+  };
+  const res = createMockResponse();
+
+  await controller(req, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, {
+    success_code: 200,
+    success_title: "User Unblocked",
+    success_message: "User was unblocked successfully.",
   });
 });
 
@@ -207,15 +280,22 @@ test("notFoundHandler returns the shared 404 error shape", () => {
 
 test("createApp registers all API routes", () => {
   const app = createApp({
+    blockUser: async () => ({}),
     registerUser: async () => ({}),
     loginUser: async () => ({}),
     viewMessages: async () => ({ messages: [] }),
     sendMessage: async () => ({}),
     listAllUsers: async () => ({ users: [] }),
+    unblockUser: async () => ({}),
     authenticateSession: async () => ({
+      userId: 1,
       user: {
         publicId: "user-1",
       },
+    }),
+    checkHealth: async () => ({
+      status: "ok",
+      database: "up",
     }),
   });
 
@@ -228,8 +308,11 @@ test("createApp registers all API routes", () => {
 
   assert.deepEqual(routes, [
     { path: "/", methods: ["get"] },
+    { path: "/health", methods: ["get"] },
     { path: "/register", methods: ["post"] },
     { path: "/login", methods: ["post"] },
+    { path: "/block_user", methods: ["post"] },
+    { path: "/unblock_user", methods: ["post"] },
     { path: "/view_messages", methods: ["get"] },
     { path: "/send_message", methods: ["post"] },
     { path: "/list_all_users", methods: ["get"] },
@@ -244,6 +327,7 @@ test("requireAuth attaches auth context to the request", async () => {
   const middleware = createRequireAuth({
     authenticateSession: async (token) => ({
       token,
+      userId: 42,
       user: {
         publicId: "user-123",
       },
@@ -269,6 +353,9 @@ test("requireAuth attaches auth context to the request", async () => {
   });
 
   assert.equal(req.auth.token, "test-token");
+  assert.equal(req.auth.userId, 42);
   assert.equal(req.body.authenticated_user_id, "user-123");
+  assert.equal(req.body.authenticated_user_internal_id, 42);
   assert.equal(req.query.authenticated_user_id, "user-123");
+  assert.equal(req.query.authenticated_user_internal_id, 42);
 });

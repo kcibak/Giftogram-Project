@@ -15,11 +15,12 @@ services:
       start_period: 10s
     volumes:
       - db_data:/var/lib/mysql
+      - ./docker/mysql/init/001-schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
 
   api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
       target: backend
     container_name: giftogram_api
     restart: always
@@ -30,18 +31,33 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/health').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
       target: frontend
     container_name: giftogram_frontend
     restart: always
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000
     ports:
       - "5173:5173"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   db_data:

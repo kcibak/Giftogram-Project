@@ -191,7 +191,9 @@ test("sendMessage rejects when a block exists between the users", async () => {
     (error) => {
       assert.ok(error instanceof ApiError);
       assert.equal(error.statusCode, 403);
-      assert.equal(error.errorCode, 1303);
+      assert.equal(error.errorCode, 403);
+      assert.equal(error.errorTitle, "Messaging Blocked");
+      assert.equal(error.errorMessage, "You cannot send messages to this user.");
       return true;
     }
   );
