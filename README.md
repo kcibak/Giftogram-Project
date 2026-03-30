@@ -59,6 +59,44 @@ giftogram-project/
 
 ---
 
+## Architecture: Layered Backend Design
+
+The backend follows a **modular, layered architecture** that separates concerns and keeps the codebase maintainable:
+
+### Controllers (`backend/src/controllers/`)
+**HTTP request handlers** — Parse incoming requests, invoke the appropriate service, and return responses. Controllers are thin and never contain business logic. Example: `loginController` receives login credentials, calls the `loginUser` service, and returns the session token or an error.
+
+### Middleware (`backend/src/middleware/`)
+**Cross-cutting concerns** — Handle authentication, error handling, and request enhancement. 
+- `requireAuth`: Extracts Bearer tokens, validates sessions, injects user ID into `req.auth` and `req.body` for downstream handlers
+- `errorHandler`: Catches exceptions and converts them into standardized error responses with proper HTTP status codes
+
+### Services (`backend/src/services/`)
+**Business logic layer** — Implements the core application logic (registration, login, messaging, blocking). Services call repositories for data access, apply validation, enforce business rules, and orchestrate workflows. Example: `loginUser` validates input, queries `userRepository` for the user, verifies password, creates a session via `sessionRepository`, and returns a login response.
+
+### Repositories (`backend/src/repositories/`)
+**Data access layer** — Encapsulate all database queries and return consistently mapped domain objects. Repositories enable easy testing via dependency injection and isolate SQL from business logic. Each repository (e.g., `userRepository`, `messageRepository`, `sessionRepository`, `userBlockRepository`) handles one entity type and provides query methods like `findByEmail`, `createMessage`, `findSessionByToken`.
+
+### Utils (`backend/src/utils/`)
+**Shared utilities and helpers**:
+- `validators.js` — Email, password, and UUID validation patterns
+- `passwordHash.js` — Password hashing (scrypt) and verification
+- `sessionToken.js` — Session token generation and hashing
+- `apiError.js` — Standard error class and error catalog (centralized error codes and messages)
+- `dateTime.js` — Date arithmetic and ISO formatting
+- `mappers.js` — Transform database rows into API response objects
+
+### Request Flow
+```
+HTTP Request → Controller → Service → Repository → Database
+             ↓        ↓         ↓          ↓           ↓
+           Parse   Orchestrate Validate  Query →  Return
+           input   workflows   rules     data    domain
+                                                 objects
+```
+
+---
+
 ## Setup Instructions
 
 ### Prerequisites
@@ -195,13 +233,11 @@ Authorization: Bearer <session_token>
 
 ## Development Process
 
-1. **Schema Design** — Designed a minimal relational schema covering `users`, `sessions`, `messages`, and `user_blocks` with composite indexes for query performance
-2. **Core API** — Implemented all five required endpoints: `register`, `login`, `send_message`, `view_messages`, `list_all_users` with input validation
-3. **Authentication** — Session-based stateful authentication with 64-character hex tokens, hashed with SHA256 server-side, validated by Bearer token middleware
-4. **Messaging** — 1:1 messaging only, sender and receiver identified by public UUIDs, messages stored with Unix epoch timestamps and retrieved in chronological order
-5. **Blocking System** — Bonus feature: prevents both sending and viewing messages in either direction when either user blocks the other (implementation in `sendMessage` and `viewMessages` services)
-6. **Frontend Tester** — Minimal React UI to simplify integration testing and demonstrate the API (login, register, user list, message send/view, block/unblock)
-7. **Docker Orchestration** — Multi-stage Dockerfile and Docker Compose for reproducible local and evaluation setups with health checks
+1. **Docker Orchestration** — Set up multi-stage Docker images and Docker Compose for the three services (MySQL, Express backend, React/Vite frontend) with health checks, enabling a reproducible environment from the start
+2. **Schema Design** — Designed a minimal relational schema covering `users`, `sessions`, `messages`, and `user_blocks` with composite indexes for query performance
+3. **Core API & Blocking** — Implemented all five required endpoints (`register`, `login`, `send_message`, `view_messages`, `list_all_users`) with input validation; 1:1 messaging with sender/receiver identified by public UUIDs, messages stored with Unix epoch timestamps and retrieved in chronological order; added bidirectional user blocking to prevent both sending and viewing messages in either direction; endpoints tested with Postman
+4. **Authentication** — Session-based stateful authentication where login produces 64-character hex session tokens (hashed with SHA256 server-side) that are required and validated via Bearer token middleware for accessing protected endpoints (messaging, user listing, blocking)
+5. **Frontend Tester** — Minimal React UI to simplify integration testing and demonstrate the API (login, register, user list, message send/view, block/unblock)
 
 ---
 
@@ -230,20 +266,18 @@ Common error codes include:
 
 ## Environment Variables
 
-The application requires database credentials (all required when running locally or in Docker). These are validated in [backend/src/config/db.js](giftogram-project/backend/src/config/db.js):
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `DB_HOST` | string | **required** | MySQL hostname (`db` in Docker, `localhost` locally) |
-| `DB_USER` | string | **required** | MySQL user |
-| `DB_PASSWORD` | string | **required** | MySQL password |
-| `DB_NAME` | string | **required** | MySQL database name |
-| `DB_PORT` | number | 3306 | MySQL port |
-| `PORT` | number | 3000 | Backend server port |
-| `SESSION_DURATION_DAYS` | number | 7 | Session token TTL in days |
-| `VITE_API_BASE_URL` | string | `http://localhost:3000` | Frontend API base URL (Docker only) |
-| `MYSQL_ROOT_PASSWORD` | string | **required** | MySQL root password (Docker compose only) |
-| `MYSQL_DATABASE` | string | giftogram_db | Database name (Docker compose only) |
+| Variable | Type | Default |
+|----------|------|---------|
+| `DB_HOST` | string | — |
+| `DB_USER` | string | — |
+| `DB_PASSWORD` | string | — |
+| `DB_NAME` | string | — |
+| `DB_PORT` | number | 3306 |
+| `PORT` | number | 3000 |
+| `SESSION_DURATION_DAYS` | number | 7 |
+| `MYSQL_ROOT_PASSWORD` | string | — |
+| `MYSQL_DATABASE` | string | giftogram_db |
+| `VITE_API_BASE_URL` | string | http://localhost:3000 |
 
 See [.env.example](giftogram-project/.env.example) for a template.
 
@@ -284,30 +318,12 @@ See [.env.example](giftogram-project/.env.example) for a template.
 
 ## Suggested Improvements
 
-### Security
-- Implement rate limiting to prevent brute-force attacks on `/login` and `/register`
-- Add token rotation: generate and return a new token on each authenticated request
-- Implement token revocation on explicit logout (delete row from `sessions` table)
-- Enforce stronger password policies (e.g., require uppercase, special characters)
-- Add HTTPS/TLS in production
-
-### API & Database
-- Implement cursor-based pagination for `/view_messages` to handle large conversation histories
-- Add optional sorting and filtering parameters to `/list_all_users` (e.g., by name, email)
-- Standardize success response format across all endpoints (currently only errors are structured)
-- Add expiration cleanup job to remove expired sessions from the database automatically
-
-### Usability & Frontend
-- Add real-time typing indicators (requires WebSocket or Server-Sent Events)
-- Display human-readable message timestamps (currently Unix epoch only)
-- Add loading states and optimistic UI updates for message send
-- Improve user search and discovery on the frontend
-
-### Architecture & Observability
-- Add structured logging with timestamp, request ID, user context
-- Implement request/response body logging for debugging
-- Add APM (Application Performance Monitoring) integration
-- Migrate to JWT with refresh tokens for stateless API (if scalability becomes critical)
+- **Rate limiting** — Prevent brute-force attacks on `/login` and `/register`
+- **Pagination** — Add cursor-based pagination for `/view_messages` to handle large conversation histories
+- **Session cleanup** — Implement expiration job to remove expired sessions from the database
+- **Timestamps** — Display human-readable message timestamps instead of Unix epoch
+- **Structured logging** — Add request ID and user context to logs for better debugging
+- **Token revocation** — Allow explicit logout by deleting session tokens from database
 
 ---
 
@@ -320,5 +336,3 @@ This project fulfills all five required backend specifications (registration, lo
 - **RESTful API** with standardized error responses and Bearer token authentication
 - **Dockerized production-ready setup** with MySQL 8, Express 5, and automated health checks
 - **Minimal React tester frontend** to simplify integration testing and demonstrate the API
-
-The codebase uses a modular service/repository pattern for separation of concerns, includes comprehensive input validation, and provides a single `docker compose up --build` command for instant evaluation. The blocking system (bonus) and frontend are included as practical demonstrations of considerations beyond the base requirements.
